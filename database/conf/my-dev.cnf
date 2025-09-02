@@ -1,0 +1,45 @@
+[mysqld]
+# 개발 환경 설정 (성능보다는 디버깅 편의성 우선)
+default_authentication_plugin = mysql_native_password
+character-set-server = utf8mb4
+collation-server = utf8mb4_unicode_ci
+init_connect = 'SET NAMES utf8mb4'
+
+# 개발용 성능 설정 (메모리 사용량 적게)
+innodb_buffer_pool_size = 256M
+innodb_log_file_size = 64M
+innodb_flush_log_at_trx_commit = 1
+innodb_file_per_table = 1
+
+# 연결 설정
+max_connections = 50
+wait_timeout = 3600
+interactive_timeout = 3600
+
+# 개발용 로그 설정 (상세 로깅)
+general_log = 1
+general_log_file = /var/log/mysql/general.log
+slow_query_log = 1
+slow_query_log_file = /var/log/mysql/slow.log
+long_query_time = 1  # 개발에서는 더 엄격하게
+
+# 디버깅용 설정
+log_error_verbosity = 3
+log_warnings = 2
+
+# SQL 모드 (개발 시 엄격하게)
+sql_mode = STRICT_TRANS_TABLES,NO_ZERO_DATE,NO_ZERO_IN_DATE,ERROR_FOR_DIVISION_BY_ZERO
+
+# 개발용 임시 테이블 설정
+tmp_table_size = 32M
+max_heap_table_size = 32M
+
+# 개발용 정렬 버퍼
+sort_buffer_size = 1M
+read_buffer_size = 64K
+
+[mysql]
+default-character-set = utf8mb4
+
+[client]
+default-character-set = utf8mb4

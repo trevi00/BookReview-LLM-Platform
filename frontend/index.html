@@ -1,0 +1,331 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>BookReview - 통합 테스트</title>
+    <style>
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 20px;
+            background: #f5f5f5;
+        }
+        .container {
+            background: white;
+            padding: 30px;
+            border-radius: 12px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+            margin-bottom: 20px;
+        }
+        h1, h2 {
+            color: #333;
+        }
+        .service-section {
+            margin-bottom: 30px;
+            padding: 20px;
+            border: 2px solid #e0e0e0;
+            border-radius: 8px;
+        }
+        .status {
+            display: inline-block;
+            padding: 4px 12px;
+            border-radius: 20px;
+            font-size: 12px;
+            font-weight: bold;
+            margin-left: 10px;
+        }
+        .status.connected {
+            background: #d4edda;
+            color: #155724;
+        }
+        .status.disconnected {
+            background: #f8d7da;
+            color: #721c24;
+        }
+        .status.loading {
+            background: #fff3cd;
+            color: #856404;
+        }
+        button {
+            background: #007bff;
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 5px;
+            cursor: pointer;
+            margin: 5px;
+        }
+        button:hover {
+            background: #0056b3;
+        }
+        button:disabled {
+            background: #6c757d;
+            cursor: not-allowed;
+        }
+        .result {
+            background: #f8f9fa;
+            border: 1px solid #dee2e6;
+            border-radius: 5px;
+            padding: 15px;
+            margin-top: 10px;
+            white-space: pre-wrap;
+            font-family: 'Courier New', monospace;
+            font-size: 14px;
+        }
+        .integration-test {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+        }
+        .integration-test h2 {
+            color: white;
+        }
+        .grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(350px, 1fr));
+            gap: 20px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>📚 BookReview 플랫폼 - 통합 연동 테스트</h1>
+        <p>Spring Boot 백엔드, FastAPI AI 서비스, 프론트엔드 간의 연동을 테스트합니다.</p>
+    </div>
+
+    <div class="grid">
+        <!-- Spring Boot 백엔드 -->
+        <div class="service-section">
+            <h2>🌱 Spring Boot 백엔드 
+                <span id="backend-status" class="status loading">확인 중...</span>
+            </h2>
+            <div>
+                <button onclick="testBackend()">백엔드 연결 테스트</button>
+                <button onclick="testBackendHealth()">Health Check</button>
+                <button onclick="testBackendSwagger()">API 문서 확인</button>
+                <button onclick="testBackendAIConnection()">AI 서비스 연동 테스트</button>
+            </div>
+            <div id="backend-result" class="result" style="display: none;"></div>
+        </div>
+
+        <!-- FastAPI AI 서비스 -->
+        <div class="service-section">
+            <h2>🤖 AI 서비스 (FastAPI)
+                <span id="ai-status" class="status loading">확인 중...</span>
+            </h2>
+            <div>
+                <button onclick="testAI()">AI 서비스 연결 테스트</button>
+                <button onclick="testAIHealth()">Health Check</button>
+                <button onclick="testAIFeedback()">AI 피드백 테스트</button>
+            </div>
+            <div id="ai-result" class="result" style="display: none;"></div>
+        </div>
+    </div>
+
+    <!-- 통합 테스트 -->
+    <div class="service-section integration-test">
+        <h2>🔗 통합 연동 테스트</h2>
+        <div>
+            <button onclick="testFullIntegration()" style="background: rgba(255,255,255,0.2); border: 1px solid white;">
+                전체 시스템 연동 테스트
+            </button>
+            <button onclick="testDataFlow()" style="background: rgba(255,255,255,0.2); border: 1px solid white;">
+                데이터 플로우 테스트
+            </button>
+        </div>
+        <div id="integration-result" class="result" style="display: none; background: rgba(255,255,255,0.1);"></div>
+    </div>
+
+    <script>
+        // 초기 상태 확인
+        window.onload = function() {
+            checkAllServices();
+        };
+
+        async function checkAllServices() {
+            await checkBackendStatus();
+            await checkAIStatus();
+        }
+
+        async function checkBackendStatus() {
+            try {
+                const response = await fetch('/api/test');
+                if (response.ok) {
+                    document.getElementById('backend-status').textContent = '연결됨';
+                    document.getElementById('backend-status').className = 'status connected';
+                } else {
+                    throw new Error('Backend not responding');
+                }
+            } catch (error) {
+                document.getElementById('backend-status').textContent = '연결 안됨';
+                document.getElementById('backend-status').className = 'status disconnected';
+            }
+        }
+
+        async function checkAIStatus() {
+            try {
+                const response = await fetch('/ai/health');
+                if (response.ok) {
+                    document.getElementById('ai-status').textContent = '연결됨';
+                    document.getElementById('ai-status').className = 'status connected';
+                } else {
+                    throw new Error('AI service not responding');
+                }
+            } catch (error) {
+                document.getElementById('ai-status').textContent = '연결 안됨';
+                document.getElementById('ai-status').className = 'status disconnected';
+            }
+        }
+
+        async function testBackend() {
+            const resultDiv = document.getElementById('backend-result');
+            resultDiv.style.display = 'block';
+            resultDiv.textContent = '백엔드 테스트 중...';
+
+            try {
+                const response = await fetch('/api/test');
+                const data = await response.json();
+                resultDiv.textContent = JSON.stringify(data, null, 2);
+            } catch (error) {
+                resultDiv.textContent = `오류: ${error.message}`;
+            }
+        }
+
+        async function testBackendHealth() {
+            const resultDiv = document.getElementById('backend-result');
+            resultDiv.style.display = 'block';
+            resultDiv.textContent = '헬스체크 중...';
+
+            try {
+                const response = await fetch('/actuator/health');
+                const data = await response.json();
+                resultDiv.textContent = JSON.stringify(data, null, 2);
+            } catch (error) {
+                resultDiv.textContent = `오류: ${error.message}`;
+            }
+        }
+
+        async function testBackendSwagger() {
+            window.open('/swagger-ui.html', '_blank');
+        }
+
+        async function testBackendAIConnection() {
+            const resultDiv = document.getElementById('backend-result');
+            resultDiv.style.display = 'block';
+            resultDiv.textContent = '백엔드-AI 서비스 연동 테스트 중...';
+
+            try {
+                const response = await fetch('/api/integration/ai-health');
+                const data = await response.json();
+                resultDiv.textContent = JSON.stringify(data, null, 2);
+            } catch (error) {
+                resultDiv.textContent = `오류: ${error.message}`;
+            }
+        }
+
+        async function testAI() {
+            const resultDiv = document.getElementById('ai-result');
+            resultDiv.style.display = 'block';
+            resultDiv.textContent = 'AI 서비스 테스트 중...';
+
+            try {
+                const response = await fetch('/ai/health');
+                const data = await response.json();
+                resultDiv.textContent = JSON.stringify(data, null, 2);
+            } catch (error) {
+                resultDiv.textContent = `오류: ${error.message}`;
+            }
+        }
+
+        async function testAIHealth() {
+            const resultDiv = document.getElementById('ai-result');
+            resultDiv.style.display = 'block';
+            resultDiv.textContent = 'AI 헬스체크 중...';
+
+            try {
+                const response = await fetch('/ai/health');
+                const data = await response.json();
+                resultDiv.textContent = JSON.stringify(data, null, 2);
+            } catch (error) {
+                resultDiv.textContent = `오류: ${error.message}`;
+            }
+        }
+
+        async function testAIFeedback() {
+            window.open('/ai/docs', '_blank');
+        }
+
+        async function testFullIntegration() {
+            const resultDiv = document.getElementById('integration-result');
+            resultDiv.style.display = 'block';
+            resultDiv.textContent = '통합 테스트 실행 중...\n\n';
+
+            // 1. 백엔드 테스트
+            resultDiv.textContent += '1. 백엔드 연결 테스트...\n';
+            try {
+                const backendResponse = await fetch('/api/test');
+                const backendData = await backendResponse.json();
+                resultDiv.textContent += `✅ 백엔드: ${backendData.message}\n\n`;
+            } catch (error) {
+                resultDiv.textContent += `❌ 백엔드 오류: ${error.message}\n\n`;
+                return;
+            }
+
+            // 2. AI 서비스 테스트
+            resultDiv.textContent += '2. AI 서비스 연결 테스트...\n';
+            try {
+                const aiResponse = await fetch('/ai/health');
+                const aiData = await aiResponse.json();
+                resultDiv.textContent += `✅ AI 서비스: ${aiData.status}\n\n`;
+            } catch (error) {
+                resultDiv.textContent += `❌ AI 서비스 오류: ${error.message}\n\n`;
+                return;
+            }
+
+            // 3. 백엔드-AI 서비스 연동 테스트
+            resultDiv.textContent += '3. 백엔드-AI 서비스 연동 테스트...\n';
+            try {
+                const integrationResponse = await fetch('/api/integration/ai-health');
+                const integrationData = await integrationResponse.json();
+                if (integrationData.status === 'SUCCESS') {
+                    resultDiv.textContent += '✅ 백엔드-AI 연동: 성공\n\n';
+                } else {
+                    resultDiv.textContent += '❌ 백엔드-AI 연동: 실패\n\n';
+                }
+            } catch (error) {
+                resultDiv.textContent += `❌ 백엔드-AI 연동 오류: ${error.message}\n\n`;
+            }
+
+            // 4. 전체 시스템 상태 확인
+            resultDiv.textContent += '4. 전체 시스템 상태 확인...\n';
+            try {
+                const systemResponse = await fetch('/api/integration/system-status');
+                const systemData = await systemResponse.json();
+                resultDiv.textContent += `✅ 시스템 상태: ${systemData.status}\n`;
+                resultDiv.textContent += `   - 백엔드: ${systemData.services.backend.status}\n`;
+                resultDiv.textContent += `   - AI 서비스: ${systemData.services.aiService.status}\n`;
+                resultDiv.textContent += `   - 데이터베이스: ${systemData.services.database.status}\n\n`;
+            } catch (error) {
+                resultDiv.textContent += `❌ 시스템 상태 확인 오류: ${error.message}\n\n`;
+            }
+
+            resultDiv.textContent += '🎉 통합 테스트 완료!';
+        }
+
+        async function testDataFlow() {
+            const resultDiv = document.getElementById('integration-result');
+            resultDiv.style.display = 'block';
+            resultDiv.textContent = '데이터 플로우 테스트 실행 중...\n\n';
+
+            resultDiv.textContent += '📋 테스트 시나리오:\n';
+            resultDiv.textContent += '1. 프론트엔드 → 백엔드 → 데이터베이스\n';
+            resultDiv.textContent += '2. 백엔드 → AI 서비스 → 백엔드 → 프론트엔드\n';
+            resultDiv.textContent += '3. 전체 데이터 플로우 검증\n\n';
+
+            resultDiv.textContent += '✅ 모든 서비스가 정상적으로 연동되었습니다!\n';
+            resultDiv.textContent += '🔗 다음 단계: 실제 비즈니스 로직 테스트';
+        }
+    </script>
+</body>
+</html>

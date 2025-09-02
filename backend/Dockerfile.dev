@@ -1,0 +1,25 @@
+# 개발 환경용 Dockerfile
+FROM eclipse-temurin:21-jdk-alpine
+
+WORKDIR /app
+
+# 필요한 패키지 설치
+RUN apk add --no-cache curl bash
+
+# Gradle wrapper 복사
+COPY gradlew .
+COPY gradle gradle
+COPY build.gradle .
+COPY settings.gradle .
+
+# 소스 코드 볼륨 마운트를 위한 디렉토리 생성
+RUN mkdir -p src logs uploads
+
+# 포트 노출
+EXPOSE 8080 5005
+
+# 개발 환경 JVM 옵션 (디버깅 포함)
+ENV JAVA_OPTS="-Xmx512m -Xms128m -XX:+UseG1GC -agentlib:jdwp=transport=dt_socket,server=y,suspend=n,address=*:5005"
+
+# 개발 모드로 애플리케이션 실행
+CMD ["./gradlew", "bootRun", "--args='--spring.profiles.active=dev'"]

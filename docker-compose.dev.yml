@@ -1,0 +1,175 @@
+version: '3.8'
+
+# 개발 환경용 Docker Compose
+services:
+  # MySQL 데이터베이스 (개발용)
+  mysql:
+    image: mysql:8.0.35
+    container_name: bookreview-mysql-dev
+    restart: unless-stopped
+    environment:
+      MYSQL_DATABASE: bookreview
+      MYSQL_USER: bookreview_user
+      MYSQL_PASSWORD: bookreview_password
+      MYSQL_ROOT_PASSWORD: root_password
+    ports:
+      - "3307:3306"
+    volumes:
+      - mysql_dev_data:/var/lib/mysql
+      - ./database/init:/docker-entrypoint-initdb.d
+      - ./database/conf/my-dev.cnf:/etc/mysql/conf.d/my.cnf
+    command: --default-authentication-plugin=mysql_native_password
+    networks:
+      - bookreview-dev-network
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "localhost", "-u", "root", "-proot_password"]
+      timeout: 20s
+      retries: 10
+      interval: 10s
+
+  # Redis 캐시 (개발용)
+  redis:
+    image: redis:7.2-alpine
+    container_name: bookreview-redis-dev
+    restart: unless-stopped
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis_dev_data:/data
+    command: redis-server --appendonly yes
+    networks:
+      - bookreview-dev-network
+
+  # Spring Boot 백엔드 (개발 모드)
+  backend-dev:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile.dev
+    container_name: bookreview-backend-dev
+    restart: unless-stopped
+    ports:
+      - "8080:8080"
+      - "5005:5005"  # 원격 디버깅 포트
+    environment:
+      - SPRING_PROFILES_ACTIVE=dev
+      - DB_HOST=mysql
+      - DB_PORT=3306
+      - DB_NAME=bookreview
+      - DB_USERNAME=bookreview_user
+      - DB_PASSWORD=bookreview_password
+      - REDIS_HOST=redis
+      - REDIS_PORT=6379
+      - AI_SERVICE_URL=http://ai-service-dev:8000
+      - JWT_SECRET=dev-jwt-secret-key
+      - LOG_LEVEL=DEBUG
+    volumes:
+      - ./backend:/app
+      - gradle_cache:/root/.gradle
+      - backend_dev_uploads:/app/uploads
+      - backend_dev_logs:/app/logs
+    depends_on:
+      mysql:
+        condition: service_healthy
+      redis:
+        condition: service_started
+    networks:
+      - bookreview-dev-network
+
+  # FastAPI AI 서비스 (개발 모드)
+  ai-service-dev:
+    build:
+      context: ./ai-service
+      dockerfile: Dockerfile.dev
+    container_name: bookreview-ai-dev
+    restart: unless-stopped
+    ports:
+      - "8000:8000"
+    environment:
+      - ENVIRONMENT=development
+      - DEBUG=true
+      - REDIS_HOST=redis
+      - REDIS_PORT=6379
+      - OPENAI_API_KEY=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
+      - OPENAI_MODEL=gpt-3.5-turbo  # 개발용으로 저렴한 모델 사용
+      - RATE_LIMIT_PER_MINUTE=30
+      - LOG_LEVEL=DEBUG
+    volumes:
+      - ./ai-service:/app
+      - python_cache:/root/.cache
+    depends_on:
+      - redis
+    networks:
+      - bookreview-dev-network
+
+  # 웹 프론트엔드 (Nginx)
+  frontend-dev:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+    container_name: bookreview-frontend-dev
+    restart: unless-stopped
+    ports:
+      - "3000:3000"
+    volumes:
+      - ./frontend:/usr/share/nginx/html:ro
+      - ./frontend/nginx.conf:/etc/nginx/nginx.conf:ro
+    depends_on:
+      - backend-dev
+      - ai-service-dev
+    networks:
+      - bookreview-dev-network
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:3000/health"]
+      timeout: 10s
+      retries: 3
+      interval: 10s
+
+  # 개발용 도구들
+  adminer:
+    image: adminer:4.8.1
+    container_name: bookreview-adminer-dev
+    restart: unless-stopped
+    ports:
+      - "8081:8080"
+    environment:
+      ADMINER_DEFAULT_SERVER: mysql
+      ADMINER_DESIGN: dracula
+    depends_on:
+      - mysql
+    networks:
+      - bookreview-dev-network
+    profiles:
+      - tools
+
+  redis-commander:
+    image: rediscommander/redis-commander:latest
+    container_name: bookreview-redis-commander-dev
+    restart: unless-stopped
+    ports:
+      - "8082:8081"
+    environment:
+      REDIS_HOSTS: local:redis:6379
+    depends_on:
+      - redis
+    networks:
+      - bookreview-dev-network
+    profiles:
+      - tools
+
+volumes:
+  mysql_dev_data:
+    driver: local
+  redis_dev_data:
+    driver: local
+  gradle_cache:
+    driver: local
+  python_cache:
+    driver: local
+  backend_dev_uploads:
+    driver: local
+  backend_dev_logs:
+    driver: local
+
+networks:
+  bookreview-dev-network:
+    driver: bridge

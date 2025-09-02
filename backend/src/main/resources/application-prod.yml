@@ -1,0 +1,116 @@
+# 운영 환경 설정
+spring:
+  jpa:
+    hibernate:
+      ddl-auto: validate # 운영 환경에서는 스키마 검증만
+    properties:
+      hibernate:
+        show_sql: false # 운영 환경에서는 SQL 로그 비활성화
+        format_sql: false
+    show-sql: false
+  
+  # 운영 환경 데이터베이스 설정
+  datasource:
+    url: ${SPRING_DATASOURCE_URL:jdbc:mysql://mysql:3306/bookreview?useSSL=true&serverTimezone=Asia/Seoul}
+    username: ${SPRING_DATASOURCE_USERNAME:bookreview_user}
+    password: ${SPRING_DATASOURCE_PASSWORD}
+    hikari:
+      maximum-pool-size: 20
+      minimum-idle: 5
+      connection-timeout: 30000
+      idle-timeout: 600000
+      max-lifetime: 1800000
+  
+  # 운영용 Redis 설정
+  data:
+    redis:
+      host: ${SPRING_REDIS_HOST:redis}
+      port: ${SPRING_REDIS_PORT:6379}
+      password: ${SPRING_REDIS_PASSWORD:}
+      lettuce:
+        pool:
+          max-active: 8
+          max-wait: -1
+          max-idle: 8
+          min-idle: 0
+
+# 운영 환경 로깅
+logging:
+  level:
+    com.bookreview: INFO
+    org.springframework: WARN
+    org.springframework.security: WARN
+    root: WARN
+  file:
+    name: /app/logs/application.log
+  pattern:
+    file: "%d{yyyy-MM-dd HH:mm:ss.SSS} [%thread] %-5level %logger{36} - %msg%n"
+
+# 운영 환경 JWT 설정 (환경 변수 사용)
+jwt:
+  secret: ${JWT_SECRET}
+  expiration: ${JWT_EXPIRATION:604800} # 7 days
+  refresh-expiration: ${JWT_REFRESH_EXPIRATION:2592000} # 30 days
+
+# 운영 환경 AI 서비스
+ai:
+  service:
+    url: ${AI_SERVICE_URL:http://ai-service:8000}
+    timeout: ${AI_SERVICE_TIMEOUT:30s}
+    retry:
+      max-attempts: 3
+      backoff-delay: 1s
+
+# 운영 환경 파일 업로드
+file:
+  upload:
+    path: ${FILE_UPLOAD_PATH:/app/uploads}
+    max-size: ${FILE_MAX_SIZE:10MB}
+
+# 운영 환경 OAuth 설정
+oauth2:
+  google:
+    client-id: ${GOOGLE_OAUTH_CLIENT_ID}
+    client-secret: ${GOOGLE_OAUTH_CLIENT_SECRET}
+    redirect-uri: ${GOOGLE_OAUTH_REDIRECT_URI:https://yourdomain.com/api/v1/auth/oauth2/callback/google}
+
+# 운영 환경 액추에이터 (제한적 노출)
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info,metrics,prometheus
+      base-path: /actuator
+  endpoint:
+    health:
+      show-details: when_authorized
+  metrics:
+    export:
+      prometheus:
+        enabled: true
+
+# 보안 설정
+server:
+  port: 8080
+  servlet:
+    context-path: /
+  error:
+    include-stacktrace: never
+    include-message: never
+    include-binding-errors: never
+  compression:
+    enabled: true
+    mime-types: application/json,application/xml,text/html,text/xml,text/plain,text/css,application/javascript
+    min-response-size: 1024
+  ssl:
+    enabled: ${SSL_ENABLED:false}
+    key-store: ${SSL_KEY_STORE:}
+    key-store-password: ${SSL_KEY_STORE_PASSWORD:}
+    key-store-type: ${SSL_KEY_STORE_TYPE:PKCS12}
+
+# OpenAPI 문서 비활성화 (프로덕션)
+springdoc:
+  api-docs:
+    enabled: false
+  swagger-ui:
+    enabled: false

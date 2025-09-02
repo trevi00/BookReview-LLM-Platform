@@ -1,0 +1,56 @@
+# 테스트 환경 설정
+spring:
+  # 테스트용 인메모리 H2 데이터베이스
+  datasource:
+    url: jdbc:h2:mem:testdb;MODE=MySQL;DB_CLOSE_DELAY=-1;DB_CLOSE_ON_EXIT=FALSE
+    username: sa
+    password: 
+    driver-class-name: org.h2.Driver
+  
+  jpa:
+    hibernate:
+      ddl-auto: create-drop # 테스트 시마다 스키마 재생성
+    properties:
+      hibernate:
+        dialect: org.hibernate.dialect.H2Dialect
+        show_sql: false
+        format_sql: false
+    show-sql: false
+  
+  # 테스트용 Redis 설정 (임베디드)
+  data:
+    redis:
+      host: localhost
+      port: 6370 # 다른 포트 사용
+
+# 테스트 환경 로깅 (최소화)
+logging:
+  level:
+    com.bookreview: INFO
+    org.springframework: WARN
+    org.hibernate: WARN
+    root: WARN
+
+# 테스트용 JWT 설정
+jwt:
+  secret: test-secret-key-for-testing-only
+  expiration: 3600
+
+# 테스트용 AI 서비스 (Mock)
+ai:
+  service:
+    url: http://localhost:8001
+    timeout: 5s
+
+# 테스트용 파일 업로드
+file:
+  upload:
+    path: ./test-uploads
+    max-size: 1MB
+
+# 테스트 환경 액추에이터 비활성화
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health

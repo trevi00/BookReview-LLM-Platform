@@ -1,0 +1,151 @@
+version: '3.8'
+
+services:
+  # MySQL 데이터베이스
+  mysql:
+    image: mysql:8.0.35
+    container_name: bookreview-mysql
+    restart: unless-stopped
+    environment:
+      MYSQL_DATABASE: bookreview
+      MYSQL_USER: bookreview_user
+      MYSQL_PASSWORD: bookreview_password
+      MYSQL_ROOT_PASSWORD: root_password
+    ports:
+      - "3307:3306"
+    volumes:
+      - mysql_data:/var/lib/mysql
+      - ./database/init:/docker-entrypoint-initdb.d
+      - ./database/conf:/etc/mysql/conf.d
+    command: --default-authentication-plugin=mysql_native_password
+    networks:
+      - bookreview-network
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "localhost", "-uroot", "-proot_password"]
+      timeout: 20s
+      retries: 10
+      interval: 10s
+
+  # Redis 캐시
+  redis:
+    image: redis:7.2-alpine
+    container_name: bookreview-redis
+    restart: unless-stopped
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis_data:/data
+      - ./redis/redis.conf:/usr/local/etc/redis/redis.conf
+    command: redis-server /usr/local/etc/redis/redis.conf
+    networks:
+      - bookreview-network
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      timeout: 10s
+      retries: 5
+      interval: 10s
+
+  # Spring Boot 백엔드
+  backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    container_name: bookreview-backend
+    restart: unless-stopped
+    ports:
+      - "8080:8080"
+    environment:
+      - SPRING_PROFILES_ACTIVE=docker
+      - DB_HOST=mysql
+      - DB_PORT=3306
+      - DB_NAME=bookreview
+      - DB_USERNAME=bookreview_user
+      - DB_PASSWORD=bookreview_password
+      - REDIS_HOST=redis
+      - REDIS_PORT=6379
+      - AI_SERVICE_URL=http://ai-service:8000
+      - JWT_SECRET=docker-jwt-secret-key-change-in-production
+      - GOOGLE_CLIENT_ID=${GOOGLE_CLIENT_ID}
+      - GOOGLE_CLIENT_SECRET=${GOOGLE_CLIENT_SECRET}
+    volumes:
+      - backend_uploads:/app/uploads
+      - backend_logs:/app/logs
+    depends_on:
+      mysql:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    networks:
+      - bookreview-network
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8080/actuator/health"]
+      timeout: 30s
+      retries: 5
+      interval: 30s
+
+  # FastAPI AI 서비스
+  ai-service:
+    build:
+      context: ./ai-service
+      dockerfile: Dockerfile
+    container_name: bookreview-ai
+    restart: unless-stopped
+    ports:
+      - "8000:8000"
+    environment:
+      - ENVIRONMENT=production
+      - DEBUG=false
+      - REDIS_HOST=redis
+      - REDIS_PORT=6379
+      - OPENAI_API_KEY=${OPENAI_API_KEY}
+      - OPENAI_MODEL=gpt-4
+      - RATE_LIMIT_PER_MINUTE=100
+      - ALLOWED_HOSTS=["backend", "localhost", "127.0.0.1"]
+    depends_on:
+      redis:
+        condition: service_healthy
+    networks:
+      - bookreview-network
+    healthcheck:
+      test: ["CMD", "python", "-c", "import requests; requests.get('http://localhost:8000/health')"]
+      timeout: 30s
+      retries: 5
+      interval: 30s
+
+  # React Native 웹 서비스 (향후 추가)
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+    container_name: bookreview-frontend
+    restart: unless-stopped
+    ports:
+      - "3000:3000"
+    environment:
+      - NODE_ENV=production
+      - REACT_APP_API_URL=http://localhost:8080/api/v1
+      - REACT_APP_AI_SERVICE_URL=http://localhost:8000/api/v1
+    depends_on:
+      - backend
+      - ai-service
+    networks:
+      - bookreview-network
+    profiles:
+      - frontend  # 프로필을 사용해 선택적 실행
+
+volumes:
+  mysql_data:
+    driver: local
+  redis_data:
+    driver: local
+  backend_uploads:
+    driver: local
+  backend_logs:
+    driver: local
+
+networks:
+  bookreview-network:
+    driver: bridge
+    ipam:
+      config:
+        - subnet: 172.20.0.0/16
